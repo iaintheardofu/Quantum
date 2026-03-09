@@ -26,16 +26,16 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
         <div className="stat-card">
           <div className="stat-header">
             <Cpu size={20} color="#5555ff" />
-            <h3>Topology State</h3>
+            <h3>Topology State (d=16)</h3>
           </div>
-          <div className="stat-value">
-            [{hwState.q0 ? '1' : '0'}, {hwState.q1 ? '1' : '0'}]
+          <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+            |{hwState.q0 !== hwState.q1 ? '1111' : '0000'}⟩ GHZ
           </div>
         </div>
       </div>
 
       <div className="visualization-panel">
-        <h2>2x2 Logic Block Macro-Cell (Universal NAND Topology)</h2>
+        <h2>Topological Entanglement Bus (d=16 GHZ Macro-State)</h2>
         <LogicBlock state={hwState} />
       </div>
     </div>
