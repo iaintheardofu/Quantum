@@ -34,8 +34,10 @@ A custom Go-based AST Compiler that tokenizes ClojureV scripts and synthesizes t
 *   **Logic Substrate:** Universal NAND Topology (Discarding sequential clocks for continuous combinatorial flux).
 
 ### 3. The 3D "Virtual Infinity" x8C Architecture
-SomaOS v3.0 introduces exponential dimensional scaling. By utilizing a **Topological Entanglement Bus**, we have achieved macroscopic virtualization of an **8-qubit GHZ state ($d=256$)**.
-*   **Macroscopic Entanglement:** A single 1-to-7 silicon fan-out node ensures that the entire 3D macro-cube shares a unified topological fate, mirroring the behavior of subatomic entanglement in room-temperature silicon.
+SomaOS v3.2 introduces exponential dimensional scaling through a fractal routing topology. 
+*   **The 8-Qubit Macro-Cube:** By utilizing a **Topological Entanglement Bus**, we achieved macroscopic virtualization of an **8-qubit GHZ state ($d=256$)**.
+*   **Scaling to the "Entanglement Station":** The architecture is designed for hierarchical expansion. By interconnecting multiple 8-qubit Macro-Cubes via a **Master Entanglement Station**, the system scales into **Fractal Hypercubes (64+ qubits)**. 
+*   **Inter-Chip Entanglement:** Utilizing high-speed transceivers and the **Silence Protocol**, SomaOS can entangle independent FPGA substrates across a physical server rack, moving from single-chip logic to a distributed **Quantum Data Center** topology.
 
 ### 4. The SPHY Engine (Stability)
 The core of 300 K stability. The SPHY Engine implements a Phase-Gravitational synchronization loop. It utilizes the FPGA's internal XADC to measure ambient thermal noise and an I2C DAC to inject an inverse **Stochastic Compensation field ($\Psi_{SC}$)**, blanket-stabilizing the macroscopic knot against decoherence.
