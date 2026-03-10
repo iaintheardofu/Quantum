@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Line, Sphere, Text } from '@react-three/drei';
+import { OrbitControls, Line, Sphere, Text, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { HardwareState } from '../App';
 
@@ -17,101 +17,122 @@ const RingOscillator = ({ position, color, isActive, speed = 1 }: { position: [n
 
   return (
     <group ref={groupRef} position={position}>
-      {/* The physical ring */}
       <mesh>
-        <torusGeometry args={[0.5, 0.05, 16, 50]} />
+        <torusGeometry args={[0.2, 0.02, 16, 50]} />
         <meshStandardMaterial color={isActive ? color : '#444c5e'} wireframe={true} emissive={isActive ? color : '#000'} emissiveIntensity={0.5} />
       </mesh>
-      {/* The electron state traversing */}
-      {isActive && (
-        <mesh position={[0.5, 0, 0]}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshBasicMaterial color="#FFF" />
-        </mesh>
-      )}
     </group>
   );
 };
 
-// A Single 2x2 Macro-Cell (Geometric Qubit)
-const MacroCell = ({ position, isActive, label, isControl }: { position: [number, number, number], isActive: boolean, label: string, isControl?: boolean }) => {
-  const q0Color = isActive ? (isControl ? '#00FF00' : '#00FFFF') : '#FF0000';
-  const q1Color = isActive ? (isControl ? '#0088FF' : '#FF00FF') : '#AA0000';
+// A Single 2x2 Macro-Cell (Geometric Qubit) - Smaller for Station View
+const MacroCell = ({ position, isActive, label, scale = 1 }: { position: [number, number, number], isActive: boolean, label: string, scale?: number }) => {
+  const qColor = isActive ? '#00FFcc' : '#FF0000';
 
   return (
-    <group position={position}>
-      {/* Loop 0 (Polar) */}
-      <RingOscillator position={[-0.8, 0, 0]} color={q0Color} isActive={isActive} speed={2} />
-      <Text position={[-0.8, -0.9, 0]} fontSize={0.2} color="white">L0</Text>
-      
-      {/* Loop 1 (Azimuthal) */}
-      <RingOscillator position={[0.8, 0, 0]} color={q1Color} isActive={isActive} speed={1.5} />
-      <Text position={[0.8, -0.9, 0]} fontSize={0.2} color="white">L1</Text>
-
-      {/* The 4-NAND Braiding Operator (XOR Bridge) */}
-      <Line
-        points={[[-0.3, 0, 0], [0.3, 0, 0]]}
-        color={isActive ? "#FFFF00" : "#5a667d"}
-        lineWidth={3}
-      />
-      <Sphere position={[0, 0, 0]} args={[0.15, 16, 16]}>
+    <group position={position} scale={[scale, scale, scale]}>
+      <RingOscillator position={[-0.3, 0, 0]} color={qColor} isActive={isActive} speed={2} />
+      <RingOscillator position={[0.3, 0, 0]} color={qColor} isActive={isActive} speed={1.5} />
+      <Sphere position={[0, 0, 0]} args={[0.08, 16, 16]}>
         <meshStandardMaterial color={isActive ? "#FFFF00" : "#5a667d"} emissive={isActive ? "#FFFF00" : "#000"} emissiveIntensity={0.8} />
       </Sphere>
-      <Text position={[0, 0.5, 0]} fontSize={0.25} color={isControl ? "#00FFcc" : "#AAA"}>{label}</Text>
+      <Text position={[0, 0.4, 0]} fontSize={0.15} color="#AAA">{label}</Text>
     </group>
   );
 };
 
-const InnerKnot = ({ state }: { state: HardwareState }) => {
+// A Cluster of 8 Qubits (A single 8-Qubit Cube)
+const QubitCube = ({ position, register, startIndex, activeCells, label }: { position: [number, number, number], register: number, startIndex: number, activeCells: number, label: string }) => {
+  const cubeRef = useRef<THREE.Group>(null);
+
+  // Layout for the 8 qubits in the cube
+  const cellPositions = [
+    [0, 1.2, 0], [-1, 0, 0.5], [1, 0, 0.5], [-1, 0, -0.5], [1, 0, -0.5], [-1.5, -1, 0], [1.5, -1, 0], [0, -1.5, 0]
+  ];
+
+  return (
+    <group position={position} ref={cubeRef}>
+      {/* Central Bus for this Cube */}
+      <Sphere position={[0, 0, 0]} args={[0.15, 16, 16]}>
+        <meshStandardMaterial color="#00FFcc" emissive="#00FFcc" emissiveIntensity={0.5} />
+      </Sphere>
+      <Text position={[0, 1.8, 0]} fontSize={0.25} color="#00FFcc">{label}</Text>
+
+      {cellPositions.map((pos, i) => {
+        const qubitIndex = startIndex + i;
+        const isActive = (register & (1 << qubitIndex)) !== 0;
+        const isVisible = qubitIndex < activeCells;
+
+        if (!isVisible) return null;
+
+        return (
+          <group key={i}>
+            <Line points={[[0, 0, 0], [pos[0], pos[1], pos[2]]]} color={isActive ? "#FFFF00" : "#333"} lineWidth={1} dashed={true} />
+            <MacroCell position={pos as [number, number, number]} isActive={isActive} label={`Q${qubitIndex}`} scale={0.6} />
+          </group>
+        );
+      })}
+    </group>
+  );
+};
+
+const HyperStationKnot = ({ state }: { state: HardwareState }) => {
   const knotRef = useRef<THREE.Group>(null);
 
-  // The SPHY Phase Field causes the entire macro-cell to pulsate/rotate
   useFrame(() => {
     if (knotRef.current) {
-      knotRef.current.rotation.y = state.phase_field * 0.2; // Rotate slower for the whole grid
-      // Pulse scale based on thermal load mapping (simulated expansion)
-      const scale = 1.0 + (state.thermal_load - 35) * 0.02;
-      knotRef.current.scale.set(scale, scale, scale);
+      knotRef.current.rotation.y = state.phase_field * 0.1;
     }
   });
 
-  // Mapping the hardware state register to the 3D grid
-  const cells = [
-    { id: 'C0', state: state.c0, pos: [0, 2.5, 0], isControl: true },
-    { id: 'C1', state: state.c1, pos: [-3, 0, 2], isControl: false },
-    { id: 'C2', state: state.c2, pos: [3, 0, 2], isControl: false },
-    { id: 'C3', state: state.c3, pos: [-3, 0, -2], isControl: false },
-    { id: 'C4', state: state.c4, pos: [3, 0, -2], isControl: false },
-    { id: 'C5', state: state.c5, pos: [-4, -2.5, 0], isControl: false },
-    { id: 'C6', state: state.c6, pos: [4, -2.5, 0], isControl: false },
-    { id: 'C7', state: state.c7, pos: [0, -4, 0], isControl: false }
-  ];
+  if (state.routing_mode === 'station') {
+    // RENDER 8 CUBES IN A CIRCULAR LAYOUT (The Station Grid)
+    const cubeCount = Math.ceil(state.active_cells / 8);
+    const radius = 6;
 
-  // Only show active cells based on DPR state
-  const activeCellsToShow = cells.slice(0, state.active_cells);
+    return (
+      <group ref={knotRef}>
+        {/* Master Station Hub */}
+        <Sphere position={[0, 0, 0]} args={[0.5, 32, 32]}>
+          <meshStandardMaterial color="#00FFcc" emissive="#00FFcc" emissiveIntensity={1} wireframe={true} />
+        </Sphere>
+        <Text position={[0, 1, 0]} fontSize={0.4} color="#00FFcc">MASTER STATION HUB</Text>
 
+        {[...Array(8)].map((_, i) => {
+          const angle = (i / 8) * Math.PI * 2;
+          const x = Math.cos(angle) * radius;
+          const z = Math.sin(angle) * radius;
+          const isVisible = i < cubeCount;
+
+          if (!isVisible) return null;
+
+          return (
+            <group key={i}>
+              <Line points={[[0, 0, 0], [x, 0, z]]} color="#00FFcc" lineWidth={2} />
+              <QubitCube 
+                position={[x, 0, z]} 
+                register={state.register} 
+                startIndex={i * 8} 
+                activeCells={state.active_cells} 
+                label={`CUBE ${i}`} 
+              />
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+
+  // FALLBACK: RENDER THE SINGLE 8-QUBIT CUBE
   return (
     <group ref={knotRef}>
-      {/* The Topological Entanglement Bus (Central Splitter) */}
-      <Sphere position={[0, 0, 0]} args={[0.3, 32, 32]}>
-        <meshStandardMaterial color={state.c0 ? "#FFFF00" : "#5a667d"} emissive={state.c0 ? "#FFFF00" : "#000"} emissiveIntensity={1} />
-      </Sphere>
-      <Text position={[0, -0.5, 0]} fontSize={0.2} color="#FFF">Entanglement Bus</Text>
-
-      {/* Fan-Out Routing Lines & Macro-Cells */}
-      {activeCellsToShow.map((cell) => (
-        <group key={cell.id}>
-          {/* Bus to Cell line */}
-          <Line 
-            points={[[0, 0, 0], [cell.pos[0], cell.pos[1], cell.pos[2]]]} 
-            color={cell.state ? "#FFFF00" : "#5a667d"} 
-            lineWidth={2} 
-            dashed={true}
-          />
-          {/* Macro-Cell */}
-          <MacroCell position={cell.pos as [number, number, number]} isActive={cell.state} label={cell.id} isControl={cell.isControl} />
-        </group>
-      ))}
+      <QubitCube 
+        position={[0, 0, 0]} 
+        register={state.register} 
+        startIndex={0} 
+        activeCells={state.active_cells} 
+        label="8-QUBIT MACRO-CUBE" 
+      />
     </group>
   );
 };
@@ -119,11 +140,11 @@ const InnerKnot = ({ state }: { state: HardwareState }) => {
 export const LogicBlock = ({ state }: { state: HardwareState }) => {
   return (
     <div className="canvas-container">
-      <Canvas camera={{ position: [0, 2, 12], fov: 50 }}>
-        <color attach="background" args={['#1c2841']} />
+      <Canvas camera={{ position: [0, 5, 15], fov: 50 }}>
+        <color attach="background" args={['#0a0f1d']} />
         <ambientLight intensity={0.6} />
         <pointLight position={[10, 10, 10]} intensity={2.5} />
-        <InnerKnot state={state} />
+        <HyperStationKnot state={state} />
         <OrbitControls enableZoom={true} />
       </Canvas>
     </div>

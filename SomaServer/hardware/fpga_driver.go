@@ -5,54 +5,70 @@ import (
         "fmt"
 )
 
-// FPGADriver simulates the 8-qubit 3D Scalable hardware interface.
+// FPGADriver simulates the 64-qubit "Entanglement Station" Grid.
 type FPGADriver struct {
-        C0          bool
-        C1          bool
-        C2          bool
-        C3          bool
-        C4          bool
-        C5          bool
-        C6          bool
-        C7          bool
+        // We use a 64-bit bitmask to represent 8 clusters of 8 qubits
+        Register    uint64 
         Phase       float64
         ActiveCells int 
-        RoutingMode string // "idle", "grover", "shor", "bell"
+        RoutingMode string // "idle", "grover", "shor", "bell", "station"
+        IsStation   bool   // Toggle between Single-Cube (8) and Station-Grid (64)
 }
 
-// NewFPGADriver initializes the hardware link
 func NewFPGADriver() *FPGADriver {
         return &FPGADriver{
                 Phase:       0.0,
                 ActiveCells: 8,
                 RoutingMode: "idle",
+                IsStation:   false,
         }
 }
 
-// Poll reads the current hardware state of the 3D Macro-Cube
 func (f *FPGADriver) Poll() {
         f.Phase += 0.1
         if f.Phase > 6.28 { f.Phase = 0.0 }
 
         noise := rand.Float64() * 0.2
-        f.C0 = (f.Phase + noise) > 3.14
+        master_state := (f.Phase + noise) > 3.14
 
-        // GHZ State: Constant Entanglement
-        f.C1 = f.C0; f.C2 = f.C0; f.C3 = f.C0; f.C4 = f.C0; f.C5 = f.C0; f.C6 = f.C0; f.C7 = f.C0
+        if f.IsStation {
+                // STATION MODE: 64-bit Entangled Grid
+                // Every bit in the 64-bit register mirrors the Master Station Anchor
+                if master_state {
+                        f.Register = 0xFFFFFFFFFFFFFFFF
+                } else {
+                        f.Register = 0x0000000000000000
+                }
+        } else {
+                // SINGLE CUBE MODE: 8-bit GHZ State
+                if master_state {
+                        f.Register = 0x00000000000000FF
+                } else {
+                        f.Register = 0x0000000000000000
+                }
+        }
 }
 
 func (f *FPGADriver) SetRoutingMode(mode string) {
         f.RoutingMode = mode
-        fmt.Printf("[HARDWARE RECONFIG] Silicon routing set to: %s\n", mode)
+        if mode == "station" {
+                f.IsStation = true
+                f.ActiveCells = 64
+        } else {
+                f.IsStation = false
+                f.ActiveCells = 8
+        }
+        fmt.Printf("[HARDWARE RECONFIG] Silicon routing set to: %s (Station: %v)\n", mode, f.IsStation)
 }
 
 func (f *FPGADriver) TriggerDPR(action string) {
-        if action == "spawn" { f.ActiveCells++ } else if action == "collapse" && f.ActiveCells > 1 { f.ActiveCells-- }
+        if action == "spawn" && f.ActiveCells < 64 { f.ActiveCells += 8 } 
+        if action == "collapse" && f.ActiveCells > 8 { f.ActiveCells -= 8 }
 }
 
 func (f *FPGADriver) GetHardwareData() HardwareState {
         return HardwareState{
-                C0: f.C0, C1: f.C1, C2: f.C2, C3: f.C3, C4: f.C4, C5: f.C5, C6: f.C6, C7: f.C7,
+                Register:    f.Register,
                 ThermalLoad: rand.Float64()*5.0 + 35.0,
                 PhaseField: f.Phase,
                 ActiveCells: f.ActiveCells,
@@ -61,8 +77,7 @@ func (f *FPGADriver) GetHardwareData() HardwareState {
 }
 
 type HardwareState struct {
-        C0 bool `json:"c0"`; C1 bool `json:"c1"`; C2 bool `json:"c2"`; C3 bool `json:"c3"`
-        C4 bool `json:"c4"`; C5 bool `json:"c5"`; C6 bool `json:"c6"`; C7 bool `json:"c7"`
+        Register    uint64  `json:"register"`    // 64-bit quantum state
         ThermalLoad float64 `json:"thermal_load"`
         PhaseField  float64 `json:"phase_field"`
         ActiveCells int     `json:"active_cells"`

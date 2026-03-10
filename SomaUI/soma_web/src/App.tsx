@@ -4,14 +4,8 @@ import { ClojureVIDE } from './components/ClojureVIDE'
 import { TopologicalFlowWindow } from './components/TopologicalFlowWindow'
 
 export type HardwareState = {
-  c0: boolean;
-  c1: boolean;
-  c2: boolean;
-  c3: boolean;
-  c4: boolean;
-  c5: boolean;
-  c6: boolean;
-  c7: boolean;
+  // 64-bit register representing 8 Entanglement Stations
+  register: number;
   thermal_load: number;
   phase_field: number;
   active_cells: number;
@@ -20,14 +14,7 @@ export type HardwareState = {
 
 function App() {
   const [hwState, setHwState] = useState<HardwareState>({
-    c0: false,
-    c1: false,
-    c2: false,
-    c3: false,
-    c4: false,
-    c5: false,
-    c6: false,
-    c7: false,
+    register: 0,
     thermal_load: 35.0,
     phase_field: 0.0,
     active_cells: 8,
@@ -60,7 +47,7 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1>SomaOS</h1>
-            <p>Geometric Virtualization Visualizer | FPGA Hardware Link</p>
+            <p>Geometric Virtualization Visualizer | {hwState.routing_mode === 'station' ? '64-Qubit Station Hub' : '8-Qubit Macro-Cube'}</p>
           </div>
           <button 
             onClick={() => setIsIdeOpen(true)}

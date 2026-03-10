@@ -1,6 +1,7 @@
 import React from 'react';
 import { HardwareState } from '../App';
 import { LogicBlock } from './LogicBlock';
+import { TopologicalFlowWindow } from './TopologicalFlowWindow';
 import { Activity, Thermometer, Cpu, Radio, Plus, Minus } from 'lucide-react';
 
 export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
@@ -17,11 +18,10 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
     }
   };
 
-  // Calculate dynamic strings based on active cells (up to 8 for the GHZ state)
   const dimension = Math.pow(2, hwState.active_cells);
   
-  // For the GHZ state, if C0 (the anchor) is true, the whole state is |11111111>
-  const ghzStateString = hwState.c0 ? '1'.repeat(hwState.active_cells) : '0'.repeat(hwState.active_cells);
+  // Format the 64-bit register as a binary string, padded based on active cells
+  const ghzStateString = hwState.register.toString(2).padStart(hwState.active_cells, '0');
 
   return (
     <div className="dashboard">
@@ -45,9 +45,9 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
         <div className="stat-card">
           <div className="stat-header">
             <Cpu size={20} color="#5555ff" />
-            <h3>Topology State (d={dimension})</h3>
+            <h3>Topology State (d=2^{hwState.active_cells})</h3>
           </div>
-          <div className="stat-value" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+          <div className="stat-value" style={{ fontSize: '0.9rem', fontWeight: 'bold', wordBreak: 'break-all', fontFamily: 'monospace' }}>
             |{ghzStateString}⟩ GHZ
           </div>
         </div>
@@ -60,7 +60,7 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
              <button onClick={() => triggerDPR('spawn')} className="dpr-btn" style={{flex: 1, padding: '10px', background: '#2a3b5c', color: '#00ffcc', border: '1px solid #00ffcc', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px'}}>
                <Plus size={16} /> Spawn Cell
              </button>
-             <button onClick={() => triggerDPR('collapse')} className="dpr-btn" disabled={hwState.active_cells <= 1} style={{flex: 1, padding: '10px', background: '#2a3b5c', color: '#ff5555', border: '1px solid #ff5555', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', opacity: hwState.active_cells <= 1 ? 0.5 : 1}}>
+             <button onClick={() => triggerDPR('collapse')} className="dpr-btn" disabled={hwState.active_cells <= 8} style={{flex: 1, padding: '10px', background: '#2a3b5c', color: '#ff5555', border: '1px solid #ff5555', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '5px', opacity: hwState.active_cells <= 8 ? 0.5 : 1}}>
                <Minus size={16} /> Collapse
              </button>
           </div>
@@ -69,8 +69,9 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
       </div>
 
       <div className="visualization-panel" style={{ position: 'relative' }}>
-        <h2>Topological Entanglement Bus (d={dimension} GHZ Macro-State)</h2>
+        <h2>{hwState.routing_mode === 'station' ? 'Fractal Hypercube: 64-Qubit Station Hub' : 'Topological Entanglement Bus: 8-Qubit Macro-Cube'}</h2>
         <LogicBlock state={hwState} />
+        <TopologicalFlowWindow state={hwState} />
       </div>
     </div>
   );

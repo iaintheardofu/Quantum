@@ -2,6 +2,22 @@ import React, { useState } from 'react';
 import { FileCode, Play, Terminal, ChevronRight, Save, FolderOpen } from 'lucide-react';
 
 const EXAMPLES = {
+  'station_scaling.cljv': `(ns ClojureV.qurq)
+
+(defn-fractal HyperStation [clk rst_n in]
+  "Manifesting a 64-qubit Fractal Hypercube via the Master Station Hub"
+  (let [master_anchor (qurq/spawn-macro-cell :Station_Core :anchor true)
+        station_bus (qurq/spawn-station-bus master_anchor)]
+    
+    ;; Braiding 8 independent 8-qubit cubes into a unified manifold
+    (loop [cube_idx 0]
+      (if (< cube_idx 8)
+        (do
+          (qurq/spawn-macro-cube cube_idx :connect-to station_bus)
+          (recur (inc cube_idx)))))
+    
+    (qurq/assign out station_bus)))`,
+
   'grovers_search.cljv': `(ns ClojureV.qurq)
 
 (defn-ai grover_oracle [clk rst_n in]
@@ -66,6 +82,7 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
     if (activeFile.includes('grover')) mode = 'grover';
     else if (activeFile.includes('shor')) mode = 'shor';
     else if (activeFile.includes('bell')) mode = 'bell';
+    else if (activeFile.includes('station')) mode = 'station';
 
     // Simulate compilation stages
     setTimeout(() => {
@@ -86,9 +103,13 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
           }
 
           setTimeout(() => {
-            setTerminalOutput(prev => [...prev, '> DPR Engine: Streaming x8C Virtual Infinity bitstream...']);
+            const dprMsg = mode === 'station' 
+              ? '> DPR Engine: Manifesting Fractal Hypercube (d=2^64)...' 
+              : '> DPR Engine: Streaming x8C Virtual Infinity bitstream...';
+            setTerminalOutput(prev => [...prev, dprMsg]);
+            
             setTimeout(() => {
-              setTerminalOutput(prev => [...prev, `[SUCCESS] ${mode.toUpperCase()} state manifest on the Möbius manifold (d=256).`]);
+              setTerminalOutput(prev => [...prev, `[SUCCESS] ${mode.toUpperCase()} state manifest on the Möbius manifold.`]);
               setIsCompiling(false);
             }, 800);
           }, 600);
