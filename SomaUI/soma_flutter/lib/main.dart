@@ -398,7 +398,7 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
                   controller: TextEditingController(text: _code),
                   onChanged: (val) => _code = val,
                   style: GoogleFonts.firaCode(fontSize: 14, color: Colors.white),
-                  decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputInput.none),
+                  decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
                 ),
               ),
               Container(
