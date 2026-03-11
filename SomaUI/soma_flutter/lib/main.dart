@@ -3,10 +3,35 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:google_fonts/google_fonts.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+// Central Logger for SomaOS
+class SomaLogger {
+  static final channel = WebSocketChannel.connect(
+    Uri.parse('ws://localhost:8082/log'),
+  );
+
+  static void log(String message) {
+    try {
+      channel.sink.add(message);
+    } catch (e) {
+      // Silently fail if websocket is down
+    }
+  }
+}
 
 void main() {
-  runApp(const SomaApp());
+  // Override print to stream to our master logger
+  runZonedGuarded(() {
+    runApp(const SomaApp());
+  }, (error, stackTrace) {
+    SomaLogger.log('[ERROR] $error');
+  }, zoneSpecification: ZoneSpecification(
+    print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
+      SomaLogger.log(line);
+      parent.print(zone, line);
+    },
+  ));
 }
 
 class SomaApp extends StatelessWidget {
@@ -21,7 +46,7 @@ class SomaApp extends StatelessWidget {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF0A0F1D),
         primaryColor: const Color(0xFF00FFCC),
-        textTheme: GoogleFonts.firaCodeTextTheme(ThemeData.dark().textTheme),
+        fontFamily: 'monospace',
       ),
       home: const DashboardPage(),
     );
@@ -75,6 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    print('>> SomaOS Dashboard Initializing...');
     _startPolling();
   }
 
@@ -89,9 +115,11 @@ class _DashboardPageState extends State<DashboardPage> {
       try {
         final response = await http.get(Uri.parse('http://localhost:8081/api/state'));
         if (response.statusCode == 200) {
-          setState(() {
-            _state = HardwareState.fromJson(json.decode(response.body));
-          });
+          if (mounted) {
+            setState(() {
+              _state = HardwareState.fromJson(json.decode(response.body));
+            });
+          }
         }
       } catch (e) {
         // Silently fail
@@ -104,10 +132,8 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Main Dashboard
           Row(
             children: [
-              // Sidebar / Telemetry
               Container(
                 width: 300,
                 color: const Color(0xFF0F1423),
@@ -115,12 +141,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('SomaOS v3.5', 
-                      style: GoogleFonts.firaCode(
-                        fontSize: 24, 
-                        fontWeight: FontWeight.bold, 
-                        color: const Color(0xFF00FFCC)
-                      )
+                    const Text('SomaOS v3.5', 
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF00FFCC))
                     ),
                     const SizedBox(height: 10),
                     const Text('HPQC VIRTUALIZATION', style: TextStyle(fontSize: 10, letterSpacing: 2, color: Colors.grey)),
@@ -130,7 +152,10 @@ class _DashboardPageState extends State<DashboardPage> {
                     _buildStatCard('Topology', 'd=2^${_state.activeCells}', Icons.memory, Colors.blue),
                     const Spacer(),
                     ElevatedButton.icon(
-                      onPressed: () => setState(() => _isIdeOpen = true),
+                      onPressed: () {
+                        print('>> Opening ClojureV IDE...');
+                        setState(() => _isIdeOpen = true);
+                      },
                       icon: const Icon(Icons.code),
                       label: const Text('OPEN CLOJUREV IDE'),
                       style: ElevatedButton.styleFrom(
@@ -141,7 +166,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ],
                 ),
               ),
-              // Central Visualization
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(40),
@@ -166,15 +190,11 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ],
           ),
-          
-          // Floating Photonic Flow Window
           Positioned(
             top: 40,
             right: 40,
             child: FloatingFlowWindow(state: _state),
           ),
-
-          // Slide-in IDE
           if (_isIdeOpen) 
             Positioned.fill(
               child: ClojureVIDE(onClose: () => setState(() => _isIdeOpen = false)),
@@ -222,16 +242,12 @@ class MobiusPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    // Draw a stylized Möbius-like figure eight representing the 8-qubit register
     final path = Path();
     for (double i = 0; i < 2 * math.pi; i += 0.05) {
       double x = math.sin(i) * 200;
       double y = math.sin(i) * math.cos(i) * 100;
-      
-      // Rotate based on phase field
       double rotatedX = x * math.cos(state.phaseField) - y * math.sin(state.phaseField);
       double rotatedY = x * math.sin(state.phaseField) + y * math.cos(state.phaseField);
-      
       if (i == 0) {
         path.moveTo(center.dx + rotatedX, center.dy + rotatedY);
       } else {
@@ -241,21 +257,14 @@ class MobiusPainter extends CustomPainter {
     path.close();
     canvas.drawPath(path, paint);
 
-    // Draw the 8 qubits as glowing nodes
     for (int i = 0; i < 8; i++) {
       double angle = (i / 8) * 2 * math.pi;
       double x = math.sin(angle) * 200;
       double y = math.sin(angle) * math.cos(angle) * 100;
-      
       double rotatedX = x * math.cos(state.phaseField) - y * math.sin(state.phaseField);
       double rotatedY = x * math.sin(state.phaseField) + y * math.cos(state.phaseField);
-      
       bool isActive = (state.register & (1 << i)) != 0;
-      
-      final nodePaint = Paint()
-        ..color = isActive ? const Color(0xFFFFFF00) : const Color(0xFFFF5555)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
-      
+      final nodePaint = Paint()..color = isActive ? const Color(0xFFFFFF00) : const Color(0xFFFF5555)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
       canvas.drawCircle(Offset(center.dx + rotatedX, center.dy + rotatedY), 10, nodePaint);
       canvas.drawCircle(Offset(center.dx + rotatedX, center.dy + rotatedY), 5, Paint()..color = Colors.white);
     }
@@ -288,10 +297,7 @@ class FloatingFlowWindow extends StatelessWidget {
               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF00FFCC))),
           ),
           Expanded(
-            child: CustomPaint(
-              painter: FlowPainter(state),
-              child: Container(),
-            ),
+            child: CustomPaint(painter: FlowPainter(state), child: Container()),
           ),
           const Padding(
             padding: EdgeInsets.all(12),
@@ -311,11 +317,9 @@ class FlowPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final random = math.Random(42);
     final paint = Paint()..color = const Color(0xFF00FFCC).withOpacity(0.6);
-    
     for (int i = 0; i < 100; i++) {
       double t = DateTime.now().millisecondsSinceEpoch / 1000.0;
       double x, y;
-      
       if (state.routingMode == 'grover') {
         double angle = t * 2 + i * 0.1;
         double r = (i % 20) + 30;
@@ -325,7 +329,6 @@ class FlowPainter extends CustomPainter {
         x = random.nextDouble() * size.width;
         y = random.nextDouble() * size.height;
       }
-      
       canvas.drawCircle(Offset(x, y), 1.5, paint);
     }
   }
@@ -343,11 +346,20 @@ class ClojureVIDE extends StatefulWidget {
 }
 
 class _ClojureVIDEState extends State<ClojureVIDE> {
-  String _code = '(ns ClojureV.qurq)\n\n(defn-ai grover_oracle [clk rst_n in]\n  (let [target 0xABCDEF]\n    (if (= in target)\n      (qurq/phi-scale out in -1.0)\n      (qurq/assign out in))))';
+  late TextEditingController _controller;
   List<String> _terminal = ['SomaOS Flutter IDE v1.0 initialized.', 'Ready for HPQC synthesis...'];
   bool _isCompiling = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: '(ns ClojureV.qurq)\n\n(defn-ai grover_oracle [clk rst_n in]\n  (let [target 0xABCDEF]\n    (if (= in target)\n      (qurq/phi-scale out in -1.0)\n      (qurq/assign out in))))'
+    );
+  }
+
   void _runSynthesis() async {
+    print('>> Initiating Live Synthesis via IDE...');
     setState(() {
       _isCompiling = true;
       _terminal.add('> Initiating Live Synthesis...');
@@ -356,21 +368,29 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
     try {
       final response = await http.post(
         Uri.parse('http://localhost:8081/api/synthesize'),
-        body: json.encode({'code': _code, 'mode': 'grover'}),
+        body: json.encode({'code': _controller.text, 'mode': 'grover'}),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('>> [SUCCESS] Synthesis Result: ${data["message"]}');
         setState(() {
           _terminal.add(data['output'] ?? '[SUCCESS] Manifest complete.');
         });
       }
     } catch (e) {
+      print('>> [ERROR] Synthesis Failed: $e');
       setState(() => _terminal.add('[ERROR] Toolchain connection failed.'));
     } finally {
       setState(() => _isCompiling = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -395,9 +415,8 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
               Expanded(
                 child: TextField(
                   maxLines: null,
-                  controller: TextEditingController(text: _code),
-                  onChanged: (val) => _code = val,
-                  style: GoogleFonts.firaCode(fontSize: 14, color: Colors.white),
+                  controller: _controller,
+                  style: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'monospace'),
                   decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
                 ),
               ),
