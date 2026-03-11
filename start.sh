@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # =====================================================================
-# SomaOS: Unified System Launcher
+# SomaOS: Unified System Launcher (Flutter Web Edition)
 # =====================================================================
 # This script launches both the Go FPGA Hardware Simulator 
-# and the React 3D Visualizer concurrently.
+# and the Flutter Web Visualizer concurrently.
 
 echo "========================================================"
-echo "    SomaOS v3.0: Initializing Visualization Environment "
+echo "    SomaOS v3.5: Initializing Visualization Environment "
 echo "========================================================"
 
 # Trap SIGINT (Ctrl+C) to clean up both background processes
@@ -24,11 +24,11 @@ GO_PID=$!
 # Wait a moment for the server to initialize
 sleep 2
 
-# 2. Start the React Frontend
-echo ">> [2/2] Booting React WebGL Visualizer..."
-cd "$PROJECT_ROOT/SomaUI/soma_web"
-npm run dev &
-VITE_PID=$!
+# 2. Start the Flutter Web Frontend
+echo ">> [2/2] Booting Flutter Web Visualizer..."
+cd "$PROJECT_ROOT/SomaUI/soma_flutter"
+flutter run -d web-server --web-port 5173 &
+FLUTTER_PID=$!
 
 echo "========================================================"
 echo " SUCCESS: SomaOS Environment is Live!"
@@ -39,4 +39,4 @@ echo " Press Ctrl+C to terminate both servers."
 echo "========================================================"
 
 # Keep the script running to hold the trap active
-wait $GO_PID $VITE_PID
+wait $GO_PID $FLUTTER_PID
