@@ -348,6 +348,74 @@ class FlowPainter extends CustomPainter {
 
 // --- UPDATED IDE WITH SENTINEL EYE & CORTEX AI ---
 
+// --- EXAMPLES DATA ---
+const Map<String, String> EXAMPLES = {
+  'station_scaling.cljv': '''(ns ClojureV.qurq)
+
+(defn-fractal HyperStation [clk rst_n in]
+  "Manifesting a 64-qubit Fractal Hypercube via the Master Station Hub"
+  (let [master_anchor (qurq/spawn-macro-cell :Station_Core :anchor true)
+        station_bus (qurq/spawn-station-bus master_anchor)]
+    
+    ;; Braiding 8 independent 8-qubit cubes into a unified manifold
+    (loop [cube_idx 0]
+      (if (< cube_idx 8)
+        (do
+          (qurq/spawn-macro-cube cube_idx :connect-to station_bus)
+          (recur (inc cube_idx)))))
+    
+    (qurq/assign out station_bus)))''',
+
+  'grovers_search.cljv': '''(ns ClojureV.qurq)
+
+(defn-ai grover_oracle [clk rst_n in]
+  (let [target 0xABCDEF]
+    (if (= in target)
+      (qurq/phi-scale out in -1.0)
+      (qurq/assign out in))))
+
+(defn-ai grover_diffusion [clk rst_n in]
+  (let [mean (qurq/read-average in)]
+    (qurq/phi-scale out (- (* 2 mean) in))))
+
+(defn-fractal grovers_search [clk rst_n in]
+  (loop [depth 16 signal in]
+    (if (zero? depth)
+      (qurq/assign out signal)
+      (let [marked (grover_oracle clk rst_n signal)]
+        (recur (dec depth) (grover_diffusion clk rst_n marked))))))''',
+
+  'shors_factorization.cljv': '''(ns ClojureV.qurq)
+
+(defn-ai modular_exponentiation [clk rst_n base exp mod]
+  (let [phi_base (qurq/phi-scale base)]
+    (qurq/mod-exp out phi_base exp mod)))
+
+(defn-fractal quantum_fourier_transform [clk rst_n in]
+  (loop [q_idx 0 data in]
+    (if (= q_idx 8)
+      (qurq/assign out data)
+      (let [h_gate (qurq/hadamard data q_idx)
+            cp_gate (qurq/controlled-phase h_gate q_idx)]
+        (recur (inc q_idx) cp_gate)))))
+
+(defn-fractal shors_factorization [clk rst_n n]
+  (let [a (qurq/select-coprime n)
+        x (qurq/superposition 8)
+        f_x (modular_exponentiation clk rst_n a x n)]
+    (let [qft_result (quantum_fourier_transform clk rst_n f_x)]
+      (qurq/collapsed-period out qft_result))))''',
+
+  'bell_state.cljv': '''(ns ClojureV.qurq)
+
+(defn-ai BellState [clk rst_n in]
+  "Creating a maximally entangled state (Psi+) using a sum-split braid"
+  (let [h_gate (qurq/hadamard in)
+        cnot_gate (qurq/sum-split h_gate in)]
+    (qurq/assign out cnot_gate)))'''
+};
+
+
 class ClojureVIDE extends StatefulWidget {
   final VoidCallback onClose;
   const ClojureVIDE({super.key, required this.onClose});
@@ -358,8 +426,10 @@ class ClojureVIDE extends StatefulWidget {
 
 class _ClojureVIDEState extends State<ClojureVIDE> {
   late TextEditingController _controller;
+  final ScrollController _terminalScrollController = ScrollController();
   List<String> _terminal = ['SomaOS Flutter IDE v1.0 initialized.', 'Ready for HPQC synthesis...'];
   bool _isCompiling = false;
+  String _activeFile = 'grovers_search.cljv';
   
   // Sentinel Eye Stream
   WebSocketChannel? _eyeChannel;
@@ -373,10 +443,68 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(
-      text: '(ns ClojureV.qurq)\n\n(defn-ai grover_oracle [clk rst_n in]\n  (let [target 0xABCDEF]\n    (if (= in target)\n      (qurq/phi-scale out in -1.0)\n      (qurq/assign out in))))'
-    );
+    _controller = TextEditingController(text: EXAMPLES[_activeFile]);
     _connectSentinelEye();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_terminalScrollController.hasClients) {
+        _terminalScrollController.animateTo(
+          _terminalScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _runSynthesis() async {
+    print('>> Initiating Live Synthesis via IDE...');
+    setState(() {
+      _isCompiling = true;
+      _terminal.add('> Initiating Live Synthesis for $_activeFile...');
+    });
+    _scrollToBottom();
+
+    // Determine routing mode based on active file
+    String mode = 'idle';
+    if (_activeFile.contains('grover')) mode = 'grover';
+    else if (_activeFile.contains('shor')) mode = 'shor';
+    else if (_activeFile.contains('bell')) mode = 'bell';
+    else if (_activeFile.contains('station')) mode = 'station';
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8081/api/synthesize'),
+        body: json.encode({'code': _controller.text, 'mode': mode}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          if (data['output'] != null) {
+            _terminal.addAll(data['output'].toString().split('\n').where((l) => l.trim().isNotEmpty));
+          }
+          _terminal.add('[SUCCESS] Manifest complete for mode: ${mode.toUpperCase()}');
+        });
+      }
+    } catch (e) {
+      setState(() => _terminal.add('[ERROR] Toolchain connection failed.'));
+    } finally {
+      setState(() => _isCompiling = false);
+      _scrollToBottom();
+    }
+  }
+
+  void _selectFile(String filename) {
+    setState(() {
+      _activeFile = filename;
+      _controller.text = EXAMPLES[filename] ?? '';
+      _terminal.add('> Opened $filename');
+    });
+    _scrollToBottom();
   }
 
   void _connectSentinelEye() {
@@ -396,33 +524,6 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
       });
     } catch (e) {
       print("[EYE] Failed to connect: $e");
-    }
-  }
-
-  void _runSynthesis() async {
-    print('>> Initiating Live Synthesis via IDE...');
-    setState(() {
-      _isCompiling = true;
-      _terminal.add('> Initiating Live Synthesis...');
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/api/synthesize'),
-        body: json.encode({'code': _controller.text, 'mode': 'grover'}),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          _terminal.add(data['output'] ?? '[SUCCESS] Manifest complete.');
-        });
-      }
-    } catch (e) {
-      setState(() => _terminal.add('[ERROR] Toolchain connection failed.'));
-    } finally {
-      setState(() => _isCompiling = false);
     }
   }
 
@@ -473,7 +574,7 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
-          // LEFT: IDE
+          // LEFT: IDE Sidebar + Editor + Terminal
           Expanded(
             flex: 2,
             child: ClipRRect(
@@ -488,24 +589,63 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
                     IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close)),
                   ],
                 ),
-                body: Column(
+                body: Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        maxLines: null,
-                        controller: _controller,
-                        style: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'monospace'),
-                        decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
+                    // Examples Sidebar
+                    Container(
+                      width: 200,
+                      color: const Color(0xFF12182B),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            color: Colors.black,
+                            width: double.infinity,
+                            child: const Text("EXAMPLES", style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: ListView(
+                              children: EXAMPLES.keys.map((filename) => InkWell(
+                                onTap: () => _selectFile(filename),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  color: _activeFile == filename ? const Color(0xFF1A2238) : Colors.transparent,
+                                  child: Text(filename, style: TextStyle(color: _activeFile == filename ? Colors.cyan : Colors.grey, fontSize: 12, fontFamily: 'monospace')),
+                                ),
+                              )).toList(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    Container(
-                      height: 150,
-                      width: double.infinity,
-                      color: Colors.black,
-                      padding: const EdgeInsets.all(10),
-                      child: ListView.builder(
-                        itemCount: _terminal.length,
-                        itemBuilder: (context, i) => Text(_terminal[i], style: const TextStyle(color: Colors.green, fontSize: 12)),
+                    
+                    // Editor & Terminal Column
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              maxLines: null,
+                              controller: _controller,
+                              style: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'monospace'),
+                              decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
+                            ),
+                          ),
+                          Container(
+                            height: 150,
+                            width: double.infinity,
+                            color: Colors.black,
+                            padding: const EdgeInsets.all(10),
+                            child: SelectionArea(
+                              child: ListView.builder(
+                                controller: _terminalScrollController,
+                                itemCount: _terminal.length,
+                                itemBuilder: (context, i) => Text(_terminal[i], style: const TextStyle(color: Colors.green, fontSize: 12, fontFamily: 'monospace')),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
