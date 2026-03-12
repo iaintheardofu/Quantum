@@ -7,29 +7,39 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 // Central Logger for SomaOS
 class SomaLogger {
-  static final channel = WebSocketChannel.connect(
-    Uri.parse('ws://localhost:8082/log'),
-  );
+  static WebSocketChannel? _channel;
+  static bool _isConnected = false;
+
+  static void _init() {
+    if (_isConnected) return;
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse('ws://localhost:8082/log'));
+      _isConnected = true;
+    } catch (e) {
+      _isConnected = false;
+    }
+  }
 
   static void log(String message) {
+    if (!_isConnected) _init();
     try {
-      channel.sink.add(message);
+      _channel?.sink.add(message);
     } catch (e) {
-      // Silently fail if websocket is down
+      _isConnected = false;
     }
   }
 }
 
 void main() {
-  // Override print to stream to our master logger
   runZonedGuarded(() {
+    WidgetsFlutterBinding.ensureInitialized();
     runApp(const SomaApp());
   }, (error, stackTrace) {
-    SomaLogger.log('[ERROR] $error');
+    SomaLogger.log('[BROWSER-ERROR] $error');
   }, zoneSpecification: ZoneSpecification(
     print: (Zone self, ZoneDelegate parent, Zone zone, String line) {
-      SomaLogger.log(line);
       parent.print(zone, line);
+      SomaLogger.log(line);
     },
   ));
 }
@@ -81,7 +91,6 @@ class HardwareState {
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
-
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
@@ -337,6 +346,8 @@ class FlowPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
+// --- UPDATED IDE WITH SENTINEL EYE & CORTEX AI ---
+
 class ClojureVIDE extends StatefulWidget {
   final VoidCallback onClose;
   const ClojureVIDE({super.key, required this.onClose});
@@ -349,6 +360,15 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
   late TextEditingController _controller;
   List<String> _terminal = ['SomaOS Flutter IDE v1.0 initialized.', 'Ready for HPQC synthesis...'];
   bool _isCompiling = false;
+  
+  // Sentinel Eye Stream
+  WebSocketChannel? _eyeChannel;
+  String _latestFrameBase64 = "";
+
+  // Cortex AI Chat
+  final TextEditingController _chatController = TextEditingController();
+  List<String> _chatLog = ['[CORTEX AI] Connected to Vertex AI Multimodal Engine.'];
+  bool _isThinking = false;
 
   @override
   void initState() {
@@ -356,6 +376,27 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
     _controller = TextEditingController(
       text: '(ns ClojureV.qurq)\n\n(defn-ai grover_oracle [clk rst_n in]\n  (let [target 0xABCDEF]\n    (if (= in target)\n      (qurq/phi-scale out in -1.0)\n      (qurq/assign out in))))'
     );
+    _connectSentinelEye();
+  }
+
+  void _connectSentinelEye() {
+    try {
+      _eyeChannel = WebSocketChannel.connect(Uri.parse('ws://localhost:5001'));
+      _eyeChannel!.stream.listen((message) {
+        final data = json.decode(message);
+        if (data['event'] == 'photonic_frame') {
+          if (mounted) {
+            setState(() {
+              _latestFrameBase64 = data['data'];
+            });
+          }
+        }
+      }, onError: (e) {
+        print("[EYE] Connection error: $e");
+      });
+    } catch (e) {
+      print("[EYE] Failed to connect: $e");
+    }
   }
 
   void _runSynthesis() async {
@@ -374,22 +415,54 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('>> [SUCCESS] Synthesis Result: ${data["message"]}');
         setState(() {
           _terminal.add(data['output'] ?? '[SUCCESS] Manifest complete.');
         });
       }
     } catch (e) {
-      print('>> [ERROR] Synthesis Failed: $e');
       setState(() => _terminal.add('[ERROR] Toolchain connection failed.'));
     } finally {
       setState(() => _isCompiling = false);
     }
   }
 
+  void _askCortex() async {
+    final query = _chatController.text;
+    if (query.isEmpty) return;
+
+    setState(() {
+      _chatLog.add('> You: $query');
+      _chatController.clear();
+      _isThinking = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://localhost:8083/api/ai/vision'),
+        body: json.encode({'image': _latestFrameBase64, 'prompt': query}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _chatLog.add('[CORTEX] ${data["insight"]}');
+        });
+      } else {
+        setState(() => _chatLog.add('[CORTEX ERROR] Failed to analyze vision.'));
+      }
+    } catch (e) {
+      setState(() => _chatLog.add('[CORTEX ERROR] Router disconnected.'));
+    } finally {
+      setState(() => _isThinking = false);
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _chatController.dispose();
+    _eyeChannel?.sink.close();
     super.dispose();
   }
 
@@ -397,42 +470,149 @@ class _ClojureVIDEState extends State<ClojureVIDE> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black.withOpacity(0.85),
-      padding: const EdgeInsets.all(40),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Scaffold(
-          backgroundColor: const Color(0xFF0F1423),
-          appBar: AppBar(
-            backgroundColor: const Color(0xFF1A2238),
-            title: const Text('ClojureV IDE (Flutter Edition)'),
-            actions: [
-              IconButton(onPressed: _runSynthesis, icon: const Icon(Icons.play_arrow, color: Colors.green)),
-              IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close)),
-            ],
-          ),
-          body: Column(
-            children: [
-              Expanded(
-                child: TextField(
-                  maxLines: null,
-                  controller: _controller,
-                  style: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'monospace'),
-                  decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          // LEFT: IDE
+          Expanded(
+            flex: 2,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Scaffold(
+                backgroundColor: const Color(0xFF0F1423),
+                appBar: AppBar(
+                  backgroundColor: const Color(0xFF1A2238),
+                  title: const Text('ClojureV Forge', style: TextStyle(fontFamily: 'monospace')),
+                  actions: [
+                    IconButton(onPressed: _runSynthesis, icon: const Icon(Icons.play_arrow, color: Colors.green)),
+                    IconButton(onPressed: widget.onClose, icon: const Icon(Icons.close)),
+                  ],
+                ),
+                body: Column(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        maxLines: null,
+                        controller: _controller,
+                        style: const TextStyle(fontSize: 14, color: Colors.white, fontFamily: 'monospace'),
+                        decoration: const InputDecoration(contentPadding: EdgeInsets.all(20), border: InputBorder.none),
+                      ),
+                    ),
+                    Container(
+                      height: 150,
+                      width: double.infinity,
+                      color: Colors.black,
+                      padding: const EdgeInsets.all(10),
+                      child: ListView.builder(
+                        itemCount: _terminal.length,
+                        itemBuilder: (context, i) => Text(_terminal[i], style: const TextStyle(color: Colors.green, fontSize: 12)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                height: 200,
-                width: double.infinity,
-                color: Colors.black,
-                padding: const EdgeInsets.all(15),
-                child: ListView.builder(
-                  itemCount: _terminal.length,
-                  itemBuilder: (context, i) => Text(_terminal[i], style: const TextStyle(color: Colors.green, fontSize: 12)),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          
+          const SizedBox(width: 20),
+
+          // RIGHT: Cortex AI & Sentinel Eye
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                // Sentinel Eye Feed
+                Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF00FFCC)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _latestFrameBase64.isEmpty 
+                      ? const Center(child: Text("NO SIGNAL\nWaiting for Sentinel Eye...", textAlign: TextAlign.center, style: TextStyle(color: Colors.red)))
+                      : Image.memory(
+                          base64Decode(_latestFrameBase64.split(',').last),
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text("SENTINEL EYE: PHYSICAL OBSERVATION", style: TextStyle(color: Color(0xFF00FFCC), fontSize: 10, fontWeight: FontWeight.bold)),
+                
+                const SizedBox(height: 20),
+
+                // Cortex Chat
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A2238),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          width: double.infinity,
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: Colors.black)),
+                          ),
+                          child: const Text("CORTEX AI: MULTIMODAL AUDIT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(10),
+                            itemCount: _chatLog.length,
+                            itemBuilder: (context, i) {
+                              bool isUser = _chatLog[i].startsWith('> You');
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Text(_chatLog[i], style: TextStyle(color: isUser ? Colors.white : Colors.cyan, fontSize: 12)),
+                              );
+                            }
+                          ),
+                        ),
+                        if (_isThinking) const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: LinearProgressIndicator(color: Colors.cyan),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _chatController,
+                                  style: const TextStyle(fontSize: 12),
+                                  decoration: const InputDecoration(
+                                    hintText: "Ask Cortex about the hardware...",
+                                    filled: true,
+                                    fillColor: Colors.black,
+                                    border: OutlineInputBorder(borderSide: BorderSide.none),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0)
+                                  ),
+                                  onSubmitted: (_) => _askCortex(),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.send, color: Colors.cyan),
+                                onPressed: _askCortex,
+                              )
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

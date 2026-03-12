@@ -1,0 +1,10 @@
+google-cloud-aiplatform
+google-genai
+opencv-python
+sounddevice
+numpy
+websockets
+fastapi
+uvicorn
+pyaudio
+mcp
