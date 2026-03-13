@@ -28,7 +28,8 @@ func TestMassiveSynthesisSuite(t *testing.T) {
 			`,
 			expectedParts: []string{
 				"module grover_oracle (",
-				"if (in == 24'habcdef) begin",
+				"target = 24'habcdef;",
+				"if (in == target) begin",
 				"out = (in * -1024) >> 10;", // Approximate float -1.0 to fixed point
 				"end else begin",
 				"out = in;",

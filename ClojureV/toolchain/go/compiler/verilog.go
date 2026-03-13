@@ -172,10 +172,14 @@ func emitVerilogStatement(node parser.Node) (string, error) {
 	                                                                v.WriteString(fmt.Sprintf("            // Sensing intent pressure into %s\n", strings.ReplaceAll(ident.Name, "-", "_")))
 	                                                        } else if valOp == "read-topological-dimension" {
 	                                                                v.WriteString(fmt.Sprintf("            // Reading topological dimension into %s\n", strings.ReplaceAll(ident.Name, "-", "_")))
+	                                                        } else if valOp == "spawn-station-bus" {
+	                                                                v.WriteString(fmt.Sprintf("            wire [63:0] %s;\n", strings.ReplaceAll(ident.Name, "-", "_")))
+	                                                                if len(valCall.Args) > 0 {
+	                                                                        v.WriteString(fmt.Sprintf("            assign %s = {64{%s[0]}};\n", strings.ReplaceAll(ident.Name, "-", "_"), formatArg(valCall.Args[0])))
+	                                                                }
 	                                                        } else {
 	                                                                v.WriteString(fmt.Sprintf("            // Let binding: %s\n", strings.ReplaceAll(ident.Name, "-", "_")))
-	                                                        }
-	                                                } else if valNum, isNum := bindings.Elements[i+1].(*parser.Number); isNum {
+	                                                        }	                                                } else if valNum, isNum := bindings.Elements[i+1].(*parser.Number); isNum {
 	                                                        v.WriteString(fmt.Sprintf("            %s = %s;\n", strings.ReplaceAll(ident.Name, "-", "_"), formatArg(valNum)))
 	                                                }
 	                                        }
@@ -196,18 +200,26 @@ func emitVerilogStatement(node parser.Node) (string, error) {
 	switch op {
 	case "if":
 	        v.WriteString("            // IF Intent Evaluated\n")
-	        if len(call.Args) > 0 {
-	                condCode, _ := emitVerilogStatement(call.Args[0])
-	                v.WriteString(condCode)
-	        }
+		condStr := "1"
+		if len(call.Args) > 0 {
+			if condCall, isCall := call.Args[0].(*parser.Call); isCall {
+				opCond := strings.TrimPrefix(condCall.Callee, "qurq/")
+				if opCond == "=" || opCond == "equal" {
+					condStr = fmt.Sprintf("%s == %s", formatArg(condCall.Args[0]), formatArg(condCall.Args[1]))
+				}
+			}
+		}
+		v.WriteString(fmt.Sprintf("            if (%s) begin\n", condStr))
 	        if len(call.Args) > 1 {
 	                code, _ := emitVerilogStatement(call.Args[1])
 	                v.WriteString(code)
 	        }
+		v.WriteString("            end else begin\n")
 	        if len(call.Args) > 2 {
 	                code, _ := emitVerilogStatement(call.Args[2])
 	                v.WriteString(code)
 	        }
+		v.WriteString("            end\n")
 	case "when":
 	        v.WriteString("            // WHEN Intent Evaluated\n")
 	        if len(call.Args) > 0 {
@@ -229,6 +241,10 @@ func emitVerilogStatement(node parser.Node) (string, error) {
 	case "spawn-macro-cell":
 	        if len(call.Args) >= 2 {
 	                v.WriteString(fmt.Sprintf("            // TRIGGER DPR: Spawn %s and connect to %s\n", formatArg(call.Args[0]), formatArg(call.Args[1])))
+	        }
+	case "spawn-macro-cube":
+	        if len(call.Args) >= 3 {
+	                v.WriteString(fmt.Sprintf("            // TRIGGER DPR: Spawn Macro Cube %s and connect to %s\n", formatArg(call.Args[0]), formatArg(call.Args[2])))
 	        }
 	case "collapse-macro-cell":
 	        if len(call.Args) >= 1 {
@@ -333,8 +349,31 @@ func emitVerilogStatement(node parser.Node) (string, error) {
 			v.WriteString("            // TransmitSoundPixel: Manifestation of inner voice into an aural fragment (go)\n")
 			v.WriteString(fmt.Sprintf("            out = %s; // Transmitted sound pixel\n", formatArg(call.Args[1])))
 		}
+	case "mod-exp":
+		v.WriteString("            // Auto-generated Modular Exponentiation Operator\n")
+	case "stochastic-compensate":
+		if len(call.Args) >= 2 {
+			dest := formatArg(call.Args[0])
+			src := formatArg(call.Args[1])
+			v.WriteString(fmt.Sprintf("            %s = ~%s;\n", dest, src))
+		}
+	case "temporal-void":
+		v.WriteString("            // Auto-generated Temporal Void Operator\n")
 	case "phi-scale":
-		if len(call.Args) >= 1 {
+		if len(call.Args) >= 3 {
+			dest := formatArg(call.Args[0])
+			src := formatArg(call.Args[1])
+			scale := formatArg(call.Args[2])
+			if scale == "-1.0" {
+				v.WriteString(fmt.Sprintf("            %s = (%s * -1024) >> 10;\n", dest, src))
+			} else {
+				v.WriteString(fmt.Sprintf("            %s = (%s * 1657) >> 10;\n", dest, src))
+			}
+		} else if len(call.Args) >= 2 {
+			dest := formatArg(call.Args[0])
+			src := formatArg(call.Args[1])
+			v.WriteString(fmt.Sprintf("            %s = (%s * 1657) >> 10;\n", dest, src))
+		} else if len(call.Args) >= 1 {
 			dest := formatArg(call.Args[0])
 			v.WriteString(fmt.Sprintf("            %s = (%s * 1657) >> 10;\n", dest, dest))
 		}
