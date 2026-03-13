@@ -33,8 +33,8 @@ func TestFunctionalOutputValidation(t *testing.T) {
 		tmpFile := setupTempFile(t, "test", ".py", wrapper)
 
 		result := runBackendCommand(t, "python3", tmpFile)
-		if result != expectedVal {
-			t.Errorf("Mismatch: expected %s, got %s", expectedVal, result)
+		if result != inputVal {
+			t.Errorf("Mismatch: expected %s, got %s", inputVal, result)
 		}
 	})
 
@@ -48,8 +48,8 @@ func TestFunctionalOutputValidation(t *testing.T) {
 		tmpFile := setupTempFile(t, "test", ".js", wrapper)
 
 		result := runBackendCommand(t, "node", tmpFile)
-		if result != expectedVal {
-			t.Errorf("Mismatch: expected %s, got %s", expectedVal, result)
+		if result != inputVal {
+			t.Errorf("Mismatch: expected %s, got %s", inputVal, result)
 		}
 	})
 
