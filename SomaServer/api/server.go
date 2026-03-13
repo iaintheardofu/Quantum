@@ -109,6 +109,10 @@ func (s *Server) handleReconfigure(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	var intent struct {
 		Mode string `json:"mode"`
 	}
@@ -127,6 +131,10 @@ func (s *Server) handleDPR(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	var intent struct {
