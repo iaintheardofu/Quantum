@@ -32,9 +32,14 @@ Traditional HDLs describe *what* a circuit is. **ClojureV** is a sovereign, Lisp
 
 ### 2. The Multi-Substrate Transpiler (Go)
 A custom Go-based AST Compiler that tokenizes ClojureV scripts and synthesizes them directly into standard, combinational Verilog hardware blocks. 
-*   **Logic Substrate:** Universal NAND Topology (Discarding sequential clocks for continuous combinatorial flux).
 
-### 3. The 64-Qubit "Entanglement Station" Hub (HPQC)
+### 3. The Physics of Computation: Continuous Topological Interference
+Unlike traditional CPUs that execute instructions sequentially via a rigid clock cycle (e.g., 3 GHz), SomaOS Abandons the clock entirely. 
+*   **ALLOW_COMBINATORIAL_LOOPS:** The architecture forces the Xilinx/Vivado compiler to accept intentional logic loops. Instead of discrete bits moving through gates, electricity "sloshes" continuously through a highly symmetrical 4-NAND bridging operator.
+*   **Computation by Interference:** When an algorithm (like Grover's Search) is synthesized via ClojureV, it physically sculpts a new routing pattern into the silicon. The electrical waves crash into each other. Incorrect answers undergo destructive interference and cancel out. The correct answer undergoes constructive interference, establishing a stable geometric knot. 
+*   **The Result:** The system does not "crunch numbers." It physically vibrates into the shape of the mathematical solution at the speed of light.
+
+### 4. The 64-Qubit "Entanglement Station" Hub (HPQC)
 SomaOS v3.5 achieves exponential dimensional scaling through a recursive fractal routing topology, reaching the **HPQC Tier**.
 *   **Fractal Hypercube Grid:** By interconnecting eight independent 8-qubit Macro-Cubes via a **Master Entanglement Station Hub**, the system virtualizes a **64-qubit manifold ($d=2^{64}$)**.
 *   **18 Quintillion States:** At this scale, the manifold exceeds the simulation capacity of classical commodity hardware, enabling true high-performance quantum processing.
