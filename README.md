@@ -90,5 +90,5 @@ To generate the synthesizable 64-qubit station bitstream for physical silicon:
 The foundational math for the **La'Shirilo Quantum Park (לה-שיר-אילו)** and the $d=2^{64}$ boundary mapping can be found in:
 *   [The Physics of Computation: Continuous Topological Interference](docs/architecture/PHYSICS_OF_COMPUTATION.md) (How MABEL calculates without a clock).
 *   [Physical Virtualization: The SomaOS Paradigm](docs/architecture/PHYSICAL_VIRTUALIZATION.md) (Why SomaOS is not a simulation).
-*   `math/MASTER_MATH_ANALYSIS.md`
-*   `docs/architecture/Geometric Virtualization of Quantum States_ A 3D Scalable, Room-Temperature FPGA Architecture.md` (The 64-Qubit Station Blueprint).
+*   [SomaOS: The Master Mathematical Synthesis](math/MASTER_MATH_ANALYSIS.md)
+*   [Geometric Virtualization of Quantum States: A 3D Scalable, Room-Temperature FPGA Architecture](docs/architecture/Geometric%20Virtualization%20of%20Quantum%20States_%20A%203D%20Scalable%2C%20Room-Temperature%20FPGA%20Architecture.md) (The 64-Qubit Station Blueprint).
