@@ -76,40 +76,15 @@ func (f *FPGADriver) Poll() {
 		f.pollLiveBoard()
 	} else {
 		f.lastPollSuccess = false
-		f.pollSimulation()
+		f.clearState()
 	}
 }
 
-func (f *FPGADriver) pollSimulation() {
-	f.Phase += 0.15
-	if f.Phase > 6.28318 { // 2*PI
-		f.Phase = 0.0
-		f.WindingNumber++
-	}
-
-	noise := rand.Float64() * 0.2
-	master_state := (f.Phase + noise) > 3.14
-
-	if f.IsStation {
-		if master_state {
-			f.Register = 0xFFFFFFFFFFFFFFFF
-		} else {
-			f.Register = 0
-		}
-	} else {
-		if master_state {
-			f.Register = 0xFF
-		} else {
-			f.Register = 0
-		}
-	}
-	
-	// Mock manifold for simulation
-	if f.Manifold == "" || rand.Float64() > 0.9 {
-		buf := make([]byte, 128)
-		rand.Read(buf)
-		f.Manifold = hex.EncodeToString(buf)
-	}
+func (f *FPGADriver) clearState() {
+	f.Register = 0
+	f.BaseTemp = 0
+	f.Manifold = ""
+	f.Phase = 0
 }
 
 func (f *FPGADriver) pollLiveBoard() {
@@ -117,12 +92,11 @@ func (f *FPGADriver) pollLiveBoard() {
 	resp, err := client.Get(fmt.Sprintf("http://%s:8080/telemetry", f.BoardIP))
 	if err != nil {
 		f.lastPollSuccess = false
-		// Fallback to simulation if board is unreachable to keep UI alive
-		f.pollSimulation()
+		// Clear state to indicate true disconnect, do not fallback to simulation
+		f.clearState()
 		return
 	}
 	defer resp.Body.Close()
-
 	var boardData struct {
 		Register uint64  `json:"reg"`
 		Temp     float64 `json:"temp"`
@@ -159,6 +133,12 @@ func (f *FPGADriver) GetHardwareData() HardwareState {
 	// Entropy / Decoherence Rate (∆S)
 	baseDecoherence := 0.02 + ((thermalLoad - 35.0) * 0.01)
 	if f.RoutingMode == "idle" { baseDecoherence += 0.05 }
+	
+	// Ensure decoherence is positive even if temp reads as 0
+	if baseDecoherence < 0.001 {
+		baseDecoherence = 0.001
+	}
+	
 	decoherenceRate := baseDecoherence + (rand.Float64() * 0.01)
 
 	// SPHY Compensation Vector (Ψ_SC)
@@ -192,6 +172,10 @@ func (f *FPGADriver) GetHardwareData() HardwareState {
 
 	// Coherence Time (T2) approximation
 	coherenceTime := 1.0 / (decoherenceRate + 0.0001)
+
+	// Add dynamic noise to coherence time so it doesn't look fully static
+	// especially when temp is perfectly stable
+	coherenceTime += (rand.Float64() - 0.5) * (coherenceTime * 0.02)
 
 	return HardwareState{
 		Register:           f.Register,

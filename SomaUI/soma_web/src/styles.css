@@ -15,6 +15,32 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  padding-top: 3rem; /* Leave space for top toolbar */
+  padding-bottom: 4rem; /* Leave space for bottom toolbar */
+}
+
+/* Top Toolbar */
+.top-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3rem;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  z-index: 1500;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.top-toolbar-left, .top-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .header {
@@ -35,17 +61,12 @@ body {
 }
 
 .connection-warning {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  padding: 0.75rem 1.25rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 8px;
-  z-index: 5000;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  animation: slideIn 0.3s ease-out;
 }
 
 @keyframes slideIn {
@@ -309,17 +330,12 @@ body {
 .h-full { height: 100%; }
 
 .connection-success {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(22, 163, 74, 0.3);
-  padding: 0.75rem 1.25rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 8px;
-  z-index: 5000;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  animation: slideIn 0.3s ease-out;
 }
 
 /* Artistic Topological Flow Window */

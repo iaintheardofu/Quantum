@@ -229,6 +229,29 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
                 </button>
               ))}
             </div>
+
+            <div className="p-2 mt-auto border-t border-gray-800 flex items-center gap-2 text-gray-400">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-blue-300">ClojureV Quick Ref</span>
+            </div>
+            <div className="p-3 text-[10px] text-gray-400 font-mono overflow-y-auto" style={{ maxHeight: '250px' }}>
+              <div className="mb-2"><span className="text-blue-400 font-bold">defn-fractal</span><br/>Defines the top-level SPHY core manifestation. Maps to the 8 physical macro-cells in continuous asynchronous mode.</div>
+              <div className="mb-2"><span className="text-blue-400 font-bold">defn-ai</span><br/>Reusable modular components. Supports Intent String.</div>
+              <div className="mb-2"><span className="text-teal-400 font-bold">qurq/phi-scale</span><br/>Scales a signal by Φ (1.618) to induce topological resonance.</div>
+              <div className="mb-2"><span className="text-teal-400 font-bold">qurq/mod-exp</span><br/>Modular exponentiation hardware macro for Shor's.</div>
+              <div className="mb-2"><span className="text-teal-400 font-bold">qurq/quat-map</span><br/>Maps 24-bit flux to quaternary intermediate states.</div>
+            </div>
+
+            <div className="mt-auto p-4 border-t border-gray-800">
+              <a 
+                href="/tutorial.html" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors text-[11px] font-bold uppercase tracking-wider group"
+              >
+                <FileCode size={14} className="group-hover:rotate-12 transition-transform" />
+                Full ClojureV Tutorial
+              </a>
+            </div>
           </div>
 
           <div className="ide-editor-container relative">

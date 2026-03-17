@@ -41,9 +41,12 @@ function App() {
         if (res.ok) {
           const data = await res.json();
           setHwState(data);
+        } else {
+          setHwState(prev => ({ ...prev, hardware_connected: false, register: 0, phase_field: 0, thermal_load: 0, shannon_entropy: 0, coherence_time: 0, state_histogram: {} }));
         }
       } catch (err) {
-        // Silently fail if server is down, keep showing old state
+        // Server is down, reflect disconnected state
+        setHwState(prev => ({ ...prev, hardware_connected: false, register: 0, phase_field: 0, thermal_load: 0, shannon_entropy: 0, coherence_time: 0, state_histogram: {} }));
       }
     };
 
@@ -54,45 +57,43 @@ function App() {
 
   return (
     <div className="app-container">
-      {hwState.hardware_connected ? (
-        <div className="connection-success">
-          <div className="flex items-center gap-3">
-            <Wifi className="text-green-500" size={24} />
-            <div className="flex flex-col">
-              <span className="text-green-400 font-bold text-[10px] uppercase tracking-widest">LIVE ON FPGA</span>
-              <span className="text-gray-400 text-[8px] uppercase font-bold">Connected to soma_agent</span>
+      <div className="top-toolbar">
+        <div className="top-toolbar-left">
+          {hwState.hardware_connected ? (
+            <div className="connection-success">
+              <div className="flex items-center gap-3">
+                <Wifi className="text-green-500" size={24} />
+                <div className="flex flex-col">
+                  <span className="text-green-400 font-bold text-[10px] uppercase tracking-widest">LIVE ON FPGA</span>
+                  <span className="text-gray-400 text-[8px] uppercase font-bold">Connected to soma_agent</span>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="connection-warning">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <WifiOff className="text-red-500 animate-pulse" size={24} />
+                  <AlertTriangle className="absolute -top-2 -right-2 text-yellow-500" size={14} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-red-400 font-bold text-[10px] uppercase tracking-widest">ALINX LINK FAILURE</span>
+                  <span className="text-gray-500 text-[8px] uppercase font-bold">Simulating SPHY Manifold...</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="connection-warning">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <WifiOff className="text-red-500 animate-pulse" size={24} />
-              <AlertTriangle className="absolute -top-2 -right-2 text-yellow-500" size={14} />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-red-400 font-bold text-[10px] uppercase tracking-widest">ALINX LINK FAILURE</span>
-              <span className="text-gray-500 text-[8px] uppercase font-bold">Simulating SPHY Manifold...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <header className="app-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1>SomaOS</h1>
-            <p>Geometric Virtualization Visualizer | {hwState.routing_mode === 'station' ? '64-Qubit Station Hub' : '8-Qubit Macro-Cube'}</p>
-          </div>
+        
+        <div className="top-toolbar-right">
           <button 
             onClick={() => setIsIdeOpen(true)}
             style={{ 
               backgroundColor: '#2563eb', 
               color: 'white', 
-              padding: '0.5rem 1rem', 
+              padding: '0.4rem 0.8rem', 
               borderRadius: '0.25rem', 
-              fontSize: '0.875rem', 
+              fontSize: '0.75rem', 
               fontWeight: 'bold',
               border: 'none',
               cursor: 'pointer'
@@ -100,6 +101,15 @@ function App() {
           >
             OPEN CLOJUREV IDE
           </button>
+        </div>
+      </div>
+
+      <header className="app-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1>SomaOS</h1>
+            <p>Geometric Virtualization Visualizer | {hwState.routing_mode === 'station' ? '64-Qubit Station Hub' : '8-Qubit Macro-Cube'}</p>
+          </div>
         </div>
       </header>
       <main className="main-content">

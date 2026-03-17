@@ -4,7 +4,7 @@ import { Sphere, Line, Text, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { HardwareState } from '../App';
 
-const ElectronicFlow = ({ mode }: { mode: string }) => {
+const ElectronicFlow = ({ mode, isConnected }: { mode: string, isConnected: boolean }) => {
   const pointsRef = useRef<THREE.Points>(null);
   const particleCount = 1500;
 
@@ -22,6 +22,8 @@ const ElectronicFlow = ({ mode }: { mode: string }) => {
   }, [mode]);
 
   useFrame((state) => {
+    if (!isConnected) return; // Stop animation if disconnected
+    
     const time = state.clock.getElapsedTime();
     const positions = pointsRef.current!.geometry.attributes.position.array as Float32Array;
 
@@ -141,12 +143,11 @@ export const TopologicalFlowWindow = ({ state }: { state: HardwareState }) => {
               <torusGeometry args={[2, 0.02, 16, 100]} />
               <meshBasicMaterial color="#1e293b" transparent opacity={0.3} />
             </mesh>
-            
-            <ElectronicFlow mode={state.routing_mode} />
-            
+
+            <ElectronicFlow mode={state.routing_mode} isConnected={state.hardware_connected} />
+
             {/* Legend Text */}
-            <Text position={[0, -2.5, 0]} fontSize={0.2} color="#4b5563">
-              REAL-TIME ELECTRONIC TOPOLOGICAL INTERFERENCE
+            <Text position={[0, -2.5, 0]} fontSize={0.2} color="#4b5563">              REAL-TIME ELECTRONIC TOPOLOGICAL INTERFERENCE
             </Text>
           </Float>
         </Canvas>

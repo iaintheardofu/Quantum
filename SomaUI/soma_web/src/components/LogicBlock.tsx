@@ -80,7 +80,7 @@ const HyperStationKnot = ({ state }: { state: HardwareState }) => {
   const knotRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
-    if (knotRef.current) {
+    if (knotRef.current && state.hardware_connected) {
       knotRef.current.rotation.y = state.phase_field * 0.1;
     }
   });

@@ -10,8 +10,8 @@ On standard silicon, this results in:
 - **Electrical Noise (EMI):** High-frequency interference that crashes the Processing System (ARM CPU).
 - **Thermal Runaway:** Excessive power draw that starves the network and AXI controllers.
 
-### 2. The Solution of Compromise: Pulsed Interference
-To maintain stability on current hardware, we implement **Pulsed Interference**. We gate the quantum cells to only oscillate during a brief "Silicon Pulse" (e.g., 0.4% duty cycle). This keeps the CPU alive but mathematically limits the "Live" time of the topological manifold.
+### 2. The Solution of Compromise: Silicon Dampening
+To maintain stability on current hardware, we implement **Silicon Dampening**. We chain internal Look-Up Tables (LUTs) to create physical propagation delays. This slows the qubits down to a stable MHz range while maintaining the **Continuous Asynchronous Flow** that the architecture demands.
 
 ### 3. The Vision: The Topological Field Programmable Array (TFPA)
 To fully realize the potential of geometric virtualization, we propose a new hardware substrate: the **TFPA**.

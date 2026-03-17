@@ -1,50 +1,49 @@
 #!/bin/bash
-# SOMA OS: Professional Network-Safe Deployment Script (Zynq-7000)
+# SOMA OS: Professional Deployment & Resuscitation Script
+# This version uses the official Vivado flash engine followed by a 
+# physical UART serial pulse to restore the network interface.
 
 BIT_FILE="./build/mabel_x8c.bit"
-BIN_FILE="./build/mabel_x8c.bin"
 BOARD_IP="10.100.102.9"
-BOARD_USER="root"
-REMOTE_PATH="/root/mabel_x8c.bin"
+SERIAL_PORT="/dev/ttyUSB0"
 
 echo "========================================================"
-echo "    SomaOS: Deploying MABEL x8C to ALINX 7020...        "
+echo "    SomaOS: Official Silicon Manifestation & Sync      "
 echo "========================================================"
 
-# 1. Convert .bit to raw .bin (strip header for xdevcfg)
-echo ">> Extracting raw bitstream from .bit header..."
-python3 -c "
-with open('$BIT_FILE', 'rb') as f:
-    data = f.read()
-    sync = b'\xaa\x99\x55\x66'
-    pos = data.find(sync)
-    if pos != -1:
-        with open('$BIN_FILE', 'wb') as out:
-            out.write(data[pos:])
-    else:
-        exit(1)
-" || (echo ">> [ERROR] Bitstream extraction failed." && exit 1)
+# 1. Quiesce Board over Network
+echo ">> [PS] Preparing board for reconfiguration..."
+ssh -o ConnectTimeout=5 root@$BOARD_IP "pkill -9 soma_agent || true"
 
-# 2. Stop Agent to prevent AXI bus contention
-echo ">> Safeguarding PS: Stopping soma_agent..."
-ssh -o ConnectTimeout=5 "$BOARD_USER@$BOARD_IP" "pkill -9 soma_agent || true"
+# 2. Perform Official Vivado JTAG Flash
+echo ">> [JTAG] Initializing Xilinx Hardware Manager..."
+pkill -9 hw_server
+/home/noam/vivado/2025.2/Vivado/bin/hw_server > /dev/null 2>&1 &
+sleep 2
 
-# 3. Transfer raw bitstream
-echo ">> Transferring raw bitstream to PS..."
-scp -o ConnectTimeout=5 "$BIN_FILE" "$BOARD_USER@$BOARD_IP:$REMOTE_PATH"
-
-# 4. Write to PL via internal bridge
-echo ">> Mapping silicon logic via xdevcfg (INTERNAL BRIDGE)..."
-ssh -o ConnectTimeout=5 "$BOARD_USER@$BOARD_IP" "cat $REMOTE_PATH > /dev/xdevcfg"
+/home/noam/vivado/2025.2/Vivado/bin/vivado -mode batch -source ./build/flash_mabel.tcl
 
 if [ $? -eq 0 ]; then
-    echo ">> [SUCCESS] MABEL x8C Braided Heart manifest on ALINX Silicon."
+    echo ">> [SUCCESS] MABEL x8C manifest active on Silicon."
     
-    # 5. Restart Agent
-    echo ">> Restoring telemetry services..."
+    # 3. PHYSICAL RESUSCITATION (Via UART Serial)
+    # The network link just dropped. We pulse it back to life from the outside.
+    echo ">> [UART] Sending Resuscitation Pulse to /dev/ttyUSB0..."
+    stty -F $SERIAL_PORT 115200 raw -echo
+    echo "" > $SERIAL_PORT
+    sleep 1
+    echo "root" > $SERIAL_PORT
+    sleep 1
+    echo "ifconfig eth0 up && udhcpc -i eth0" > $SERIAL_PORT
+    
+    echo ">> [SYSTEM] Waiting for DHCP Snapback (10s)..."
+    sleep 10
+
+    # 4. Restart Telemetry Agent
+    echo ">> [PS] Restoring telemetry services over network..."
     ./transfer_agent_and_run.sh
-    echo ">> [NETWORK] Connection STABLE."
+    echo ">> [NETWORK] Connection RESTORED. Deployment Complete."
 else
-    echo ">> [ERROR] xdevcfg flash failed. Device might be locked."
+    echo ">> [ERROR] Vivado Flash failed. Check USB connection."
     exit 1
 fi
