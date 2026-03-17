@@ -3,6 +3,7 @@ import { Dashboard } from './components/Dashboard'
 import { ClojureVIDE } from './components/ClojureVIDE'
 import { Wifi, WifiOff, AlertTriangle, Monitor } from 'lucide-react'
 import { TopologicalFlowWindow } from './components/TopologicalFlowWindow'
+import { TopologicalToolbar } from './components/TopologicalToolbar'
 
 export type HardwareState = {
   // 64-bit register representing 8 Entanglement Stations
@@ -53,7 +54,17 @@ function App() {
 
   return (
     <div className="app-container">
-      {!hwState.hardware_connected && (
+      {hwState.hardware_connected ? (
+        <div className="connection-success">
+          <div className="flex items-center gap-3">
+            <Wifi className="text-green-500" size={24} />
+            <div className="flex flex-col">
+              <span className="text-green-400 font-bold text-[10px] uppercase tracking-widest">LIVE ON FPGA</span>
+              <span className="text-gray-400 text-[8px] uppercase font-bold">Connected to soma_agent</span>
+            </div>
+          </div>
+        </div>
+      ) : (
         <div className="connection-warning">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -94,6 +105,9 @@ function App() {
       <main className="main-content">
         <Dashboard hwState={hwState} />
       </main>
+
+      <TopologicalFlowWindow state={hwState} />
+      <TopologicalToolbar hwState={hwState} />
 
       {isIdeOpen && <ClojureVIDE onClose={() => setIsIdeOpen(false)} />}
     </div>

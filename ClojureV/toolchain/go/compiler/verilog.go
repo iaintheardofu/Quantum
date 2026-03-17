@@ -31,16 +31,29 @@ func emitVerilogDefn(d *parser.Defn) (string, error) {
 		v.WriteString(fmt.Sprintf("// AI INTENT: %s\n", d.Intent))
 	}
 
-	v.WriteString(fmt.Sprintf("module %s (\n", d.Name))
-	for _, p := range d.Params {
+	modName := strings.ReplaceAll(d.Name, "-", "_")
+	if d.IsFractal {
+		modName = "sphy_core"
+	}
+	v.WriteString(fmt.Sprintf("module %s (\n", modName))
+	
+	var thirdParam string
+	for i, p := range d.Params {
 		pName := strings.ReplaceAll(p, "-", "_")
-		if pName == "clk" || pName == "rst_n" {
+		if i == 2 && d.IsFractal {
+			v.WriteString(fmt.Sprintf("    input wire [23:0] in_flux,\n"))
+			thirdParam = pName
+		} else if pName == "clk" || pName == "rst_n" {
 			v.WriteString(fmt.Sprintf("    input wire %s,\n", pName))
 		} else {
 			v.WriteString(fmt.Sprintf("    input wire [23:0] %s,\n", pName))
 		}
 	}
 	v.WriteString("    output reg [23:0] out\n);\n")
+
+	if thirdParam != "" {
+		v.WriteString(fmt.Sprintf("    wire [23:0] %s = in_flux;\n", thirdParam))
+	}
 
 	// Determine if we need local variables (mid, etc.)
 	localVars := make(map[string]bool)

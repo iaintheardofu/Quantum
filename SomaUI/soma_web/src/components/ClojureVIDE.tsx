@@ -74,6 +74,13 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const terminalEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (terminalEndRef.current) {
+      terminalEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [terminalOutput, isCompiling]);
 
   const syncScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (scrollRef.current) {
@@ -139,7 +146,7 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
       if (res.ok) {
         const data = await res.json();
         setTerminalOutput(prev => [...prev, `> Synthesis Job Started: ${data.job_id}`]);
-        setCompilationStatus('Vivado Synthesis in Progress...');
+        setCompilationStatus('Synthesis & JTAG Flash in Progress...');
         pollStatus(data.job_id, mode);
       } else {
         setTerminalOutput(prev => [...prev, '[ERROR] Synthesis Engine failed to start job.']);
@@ -195,8 +202,8 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
               disabled={isCompiling}
               className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-bold transition-all ${isCompiling ? 'bg-gray-700 text-gray-400' : 'bg-green-600 hover:bg-green-500 text-white'}`}
             >
-              <Play size={14} fill="currentColor" />
-              {isCompiling ? 'SYNTHESIZING...' : 'COMPILE & SYNTHESIZE'}
+              {isCompiling ? <Loader2 className="animate-spin" size={14} /> : <Play size={14} fill="currentColor" />}
+              {isCompiling ? 'SYNTHESIZING & FLASHING...' : 'COMPILE, SYNTHESIZE & FLASH'}
             </button>
             <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
               ✕
@@ -235,7 +242,7 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="text-blue-400 font-bold text-sm tracking-widest uppercase animate-pulse">{compilationStatus}</span>
-                  <span className="text-gray-500 text-[10px] mt-1">Vivado Hardware Manifestation...</span>
+                  <span className="text-gray-500 text-[10px] mt-1">Compilation, Synthesis & JTAG Flash in progress...</span>
                 </div>
               </div>
             )}
@@ -273,13 +280,14 @@ export const ClojureVIDE = ({ onClose }: { onClose: () => void }) => {
                 Xilinx Vivado v2025.2
               </div>
             </div>
-            <div className="p-4 font-mono text-[11px] h-full overflow-y-auto bg-black text-blue-400/90">
+            <div className="p-4 font-mono text-[11px] flex-1 overflow-y-auto bg-black text-blue-400/90">
               {terminalOutput.map((line, i) => (
                 <div key={i} className={`mb-1 ${line.includes('[ERROR]') || line.includes('[CRITICAL]') ? 'text-red-400' : line.includes('[SUCCESS]') || line.includes('[HW]') || line.includes('[JTAG]') ? 'text-green-400' : line.startsWith('  ') ? 'text-gray-400' : ''}`}>
                   {line}
                 </div>
               ))}
               {isCompiling && <div className="animate-pulse">_</div>}
+              <div ref={terminalEndRef} />
             </div>
           </div>
         </div>

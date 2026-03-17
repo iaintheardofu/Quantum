@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, Line, Text, Float } from '@react-three/drei';
 import * as THREE from 'three';
@@ -84,10 +84,49 @@ const ElectronicFlow = ({ mode }: { mode: string }) => {
 };
 
 export const TopologicalFlowWindow = ({ state }: { state: HardwareState }) => {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({
+        x: e.clientX - dragStart.current.x,
+        y: e.clientY - dragStart.current.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
+
   return (
-    <div className="flow-window">
-      <div className="flow-window-header">
-        <span className="text-[10px] font-bold tracking-widest text-blue-400 uppercase">
+    <div 
+      className="flow-window"
+      style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+    >
+      <div 
+        className="flow-window-header"
+        onMouseDown={handleMouseDown}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
+        <span className="text-[10px] font-bold tracking-widest text-blue-400 uppercase pointer-events-none select-none">
           Silicon Routing: {state.routing_mode.toUpperCase()}
         </span>
       </div>

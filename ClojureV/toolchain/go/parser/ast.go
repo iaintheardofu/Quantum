@@ -38,11 +38,12 @@ func (n *Namespace) String() string { return "(ns " + n.Name + ")" }
 
 // Defn represents a function definition (defn or defn-ai)
 type Defn struct {
-	Name   string
-	IsAI   bool
-	Params []string
-	Intent string // Only used if IsAI is true
-	Body   []Node
+	Name      string
+	IsAI      bool
+	IsFractal bool
+	Params    []string
+	Intent    string // Only used if IsAI is true
+	Body      []Node
 }
 
 func (d *Defn) Type() NodeType { return NodeDefn }

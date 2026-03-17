@@ -123,8 +123,9 @@ func (p *Parser) parseDefn(defType string) (*Defn, error) {
 		return nil, fmt.Errorf("expected function name")
 	}
 	d := &Defn{
-		Name: p.cur.Value,
-		IsAI: defType == "defn-ai",
+		Name:      p.cur.Value,
+		IsAI:      defType == "defn-ai",
+		IsFractal: defType == "defn-fractal",
 	}
 	p.advance()
 
