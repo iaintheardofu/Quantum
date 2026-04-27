@@ -16,7 +16,8 @@ export type HardwareState = {
   shannon_entropy: number;
   coherence_time: number;
   state_histogram: Record<string, number>;
-  hardware_connected: bool;
+  hardware_connected: boolean;
+  live_mode?: boolean;
 };
 
 function App() {
@@ -62,10 +63,18 @@ function App() {
           {hwState.hardware_connected ? (
             <div className="connection-success">
               <div className="flex items-center gap-3">
-                <Wifi className="text-green-500" size={24} />
+                {hwState.live_mode ? (
+                  <Wifi className="text-green-500" size={24} />
+                ) : (
+                  <Monitor className="text-cyan-400" size={24} />
+                )}
                 <div className="flex flex-col">
-                  <span className="text-green-400 font-bold text-[10px] uppercase tracking-widest">LIVE ON FPGA</span>
-                  <span className="text-gray-400 text-[8px] uppercase font-bold">Connected to soma_agent</span>
+                  <span className={`font-bold text-[10px] uppercase tracking-widest ${hwState.live_mode ? 'text-green-400' : 'text-cyan-400'}`}>
+                    {hwState.live_mode ? 'LIVE ON FPGA' : 'SPHY MANIFOLD ACTIVE'}
+                  </span>
+                  <span className="text-gray-400 text-[8px] uppercase font-bold">
+                    {hwState.live_mode ? 'Connected to soma_agent' : 'Geometric Virtualization Running'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -78,7 +87,7 @@ function App() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-red-400 font-bold text-[10px] uppercase tracking-widest">ALINX LINK FAILURE</span>
-                  <span className="text-gray-500 text-[8px] uppercase font-bold">Simulating SPHY Manifold...</span>
+                  <span className="text-gray-500 text-[8px] uppercase font-bold">Awaiting connection...</span>
                 </div>
               </div>
             </div>
