@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Dashboard } from './components/Dashboard'
 import { ClojureVIDE } from './components/ClojureVIDE'
 import { Wifi, WifiOff, AlertTriangle, Monitor } from 'lucide-react'
 import { TopologicalFlowWindow } from './components/TopologicalFlowWindow'
 import { TopologicalToolbar } from './components/TopologicalToolbar'
+import { simulateHardwareState } from './simulation'
 
 export type HardwareState = {
   // 64-bit register representing 8 Entanglement Stations
@@ -34,25 +35,38 @@ function App() {
   });
 
   const [isIdeOpen, setIsIdeOpen] = useState(false);
+  const backendAlive = useRef<boolean | null>(null);
 
   useEffect(() => {
-    const fetchState = async () => {
+    // Determine API base: use Go backend locally, skip on deployed (no backend)
+    const isDeployed = typeof window !== 'undefined' &&
+      !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/);
+    const apiBase = isDeployed ? null : 'http://localhost:8081';
+
+    const tick = async () => {
+      // If deployed or backend previously failed, use client-side simulation
+      if (!apiBase || backendAlive.current === false) {
+        setHwState(simulateHardwareState());
+        return;
+      }
+
       try {
-        const res = await fetch('http://localhost:8081/api/state');
+        const res = await fetch(`${apiBase}/api/state`);
         if (res.ok) {
-          const data = await res.json();
-          setHwState(data);
+          backendAlive.current = true;
+          setHwState(await res.json());
         } else {
-          setHwState(prev => ({ ...prev, hardware_connected: false, register: 0, phase_field: 0, thermal_load: 0, shannon_entropy: 0, coherence_time: 0, state_histogram: {} }));
+          backendAlive.current = false;
+          setHwState(simulateHardwareState());
         }
-      } catch (err) {
-        // Server is down, reflect disconnected state
-        setHwState(prev => ({ ...prev, hardware_connected: false, register: 0, phase_field: 0, thermal_load: 0, shannon_entropy: 0, coherence_time: 0, state_histogram: {} }));
+      } catch {
+        backendAlive.current = false;
+        setHwState(simulateHardwareState());
       }
     };
 
-    // Poll server at 10Hz to match hardware simulator
-    const interval = setInterval(fetchState, 100);
+    // Poll at 10Hz
+    const interval = setInterval(tick, 100);
     return () => clearInterval(interval);
   }, []);
 

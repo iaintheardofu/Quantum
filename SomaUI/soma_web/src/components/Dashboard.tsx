@@ -3,10 +3,18 @@ import { HardwareState } from '../App';
 import { LogicBlock } from './LogicBlock';
 import { TopologicalFlowWindow } from './TopologicalFlowWindow';
 import { Activity, Thermometer, Cpu, Radio, Plus, Minus, BarChart3, Database, Binary } from 'lucide-react';
+import { simDPR } from '../simulation';
 
 export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
 
+  const isDeployed = typeof window !== 'undefined' &&
+    !window.location.hostname.match(/^(localhost|127\.0\.0\.1)$/);
+
   const triggerDPR = async (action: 'spawn' | 'collapse') => {
+    if (isDeployed) {
+      simDPR(action);
+      return;
+    }
     try {
       await fetch('http://localhost:8081/api/dpr', {
         method: 'POST',
@@ -14,7 +22,7 @@ export const Dashboard = ({ hwState }: { hwState: HardwareState }) => {
         body: JSON.stringify({ action })
       });
     } catch (e) {
-      console.error("DPR Injection Failed", e);
+      simDPR(action);
     }
   };
 
